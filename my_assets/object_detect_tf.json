@@ -1,0 +1,16 @@
+{
+    "object_detect_tf":
+    {
+	"number_of_threads" : 2,
+	"refresh_rate" : 10,
+	"confidence_threshold" : 0.5,
+	"overlap_threshold" : 0.5,
+	"model_file" : "/home/pi/dev/models/object_detect/detect.tflite",
+	"labels_file" : "/home/pi/dev/models/object_detect/labelmap.txt",
+	"verbose" : 1
+    },
+    "object_detect_draw_cv":
+    {
+	"line_thickness" : 2
+    }
+}
