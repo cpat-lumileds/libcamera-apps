@@ -1,17 +1,22 @@
 {
-    "adaptive_cv":
+    "adaptive_stats_cv":
     {
         "seg_x": 3,
         "seg_y": 3
     },
 
-    "annotate_cv" :
+    "adaptive_annotate_stats_cv":
     {
-	"text" : "Frame %frame exp %exp ag %ag dg %dg",
-	"fg" : 255,
-	"bg" : 0,
-	"scale" : 1.0,
-	"thickness" : 2,
-	"alpha" : 0.3
+        "text" : "Frame %frame exp %exp ag %ag dg %dg",
+        "fg" : 255,
+        "bg" : 0,
+        "scale" : 1.0,
+        "thickness" : 2,
+        "alpha" : 0.3
+    },
+
+    "adaptive_cv":
+    {
+
     }
 }
