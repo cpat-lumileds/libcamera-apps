@@ -45,6 +45,8 @@ private:
 	double alpha_;
 	double adjusted_scale_;
 	int adjusted_thickness_;
+
+	float avg_y_;
 };
 
 #define NAME "adaptive_annotate_stats_cv"
@@ -86,11 +88,8 @@ bool AdaptiveAnnotateStatsCvStage::Process(CompletedRequestPtr &completed_reques
 
 	// Other post-processing stages can supply metadata to update the text.
 	completed_request->post_process_metadata.Get("annotate.text", text_);
-	std::string text = info.ToString(text_);
-
-	float avg = 0.0;
-	completed_request->post_process_metadata.Get("adaptive.results", avg);
-	std::cout << avg << std::endl;
+	completed_request->post_process_metadata.Get("adaptive.results", avg_y_);
+	std::string text = info.ToString(text_) + std::to_string(avg_y_);
 
 	uint8_t *ptr = (uint8_t *)buffer.data();
 	Mat im(info_.height, info_.width, CV_8U, ptr, info_.stride);

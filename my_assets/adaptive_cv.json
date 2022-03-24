@@ -7,7 +7,7 @@
 
     "adaptive_annotate_stats_cv":
     {
-        "text" : "Frame %frame exp %exp ag %ag dg %dg",
+        "text" : "Frame: %frame exp: %exp ag: %ag dg: %dg mean_y: ",
         "fg" : 255,
         "bg" : 0,
         "scale" : 1.0,

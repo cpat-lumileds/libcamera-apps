@@ -109,6 +109,8 @@ and it can also allocate any resources that it may require.
 void AdaptiveStatsCvStage::Configure()
 {
 	stream_ = app_->GetMainStream();
+	if (stream_->configuration().pixelFormat != libcamera::formats::YUV420)
+		throw std::runtime_error("AdaptiveStatsCvStage: pixel format is not YUV420");
 }
 
 /*
@@ -120,20 +122,20 @@ to deliver this request on to the application.
 */
 bool AdaptiveStatsCvStage::Process(CompletedRequestPtr &completed_request)
 {
-	//StreamInfo info = app_->GetStreamInfo(stream_);
+	StreamInfo info = app_->GetStreamInfo(stream_);
+	unsigned h = info.height, stride = info.stride;
+
 	libcamera::Span<uint8_t> buffer = app_->Mmap(completed_request->buffers[stream_])[0];
-	uint32_t *ptr = (uint32_t *)buffer.data();
-
+	uint8_t *Y = (uint8_t *)buffer.data();
+	
 	/* image processing */
+	float sum_y = 0.0, avg_y = 0.0;
+	for (unsigned int i = 0 ; i < h; i++)
+		sum_y += *(Y +  i * stride);
 
-	// Constraints on the stride mean we always have multiple-of-4 bytes.
-	float sum = 0.0, avg = 0.0;
-	for (unsigned int i = 0; i < buffer.size(); i += 4){
-		//*(ptr++) ^= 0xffffffff;
-		sum += *(ptr++);
-	}
-	avg = sum / (buffer.size() / 4);
-	adaptive_results_ = avg;
+	avg_y = sum_y / h;
+	adaptive_results_ = avg_y;
+	
 	completed_request->post_process_metadata.Set("adaptive.results", adaptive_results_);
 
 	return false;
