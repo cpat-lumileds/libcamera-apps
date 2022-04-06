@@ -7,27 +7,27 @@
 
 Some helpful hints on writing your own stages:
 
-Generally, the Process method should not take too long as it will block the imaging pipeline 
-and may cause stuttering.
-When time-consuming algorithms need to be run, it may be helpful to delegate them to 
-another asynchronous thread.
+*	Generally, the Process method should not take too long as it will block the imaging pipeline 
+	and may cause stuttering.
+	When time-consuming algorithms need to be run, it may be helpful to delegate them to 
+	another asynchronous thread.
 
-When delegating work to another thread, the way image buffers are handled currently 
-means that they will need to be copied.
-For some applications, such as image analysis, 
-it may be viable to use the "low resolution" image stream rather than full resolution images.
+*	When delegating work to another thread, the way image buffers are handled currently 
+	means that they will need to be copied.
+	For some applications, such as image analysis, 
+	it may be viable to use the "low resolution" image stream rather than full resolution images.
 
-The post-processing framework adds multi-threading parallelism on a per-frame basis. 
-This is helpful in improving throughput if you want to run on every single frame. 
-Some functions may supply parallelism within each frame (such as OpenCV and TFLite). 
-In these cases it would probably be better to serialise the calls so as to suppress 
-the per-frame parallelism.
+*	The post-processing framework adds multi-threading parallelism on a per-frame basis. 
+	This is helpful in improving throughput if you want to run on every single frame. 
+	Some functions may supply parallelism within each frame (such as OpenCV and TFLite). 
+	In these cases it would probably be better to serialise the calls so as to suppress 
+	the per-frame parallelism.
 
-Most streams, and in particular the low resolution stream, have YUV420 format. 
-These formats are sometimes not ideal for OpenCV or TFLite so there may sometimes 
-need to be a conversion step.
+*	Most streams, and in particular the low resolution stream, have YUV420 format. 
+	These formats are sometimes not ideal for OpenCV or TFLite so there may sometimes 
+	need to be a conversion step.
 
-When images need to be altered, doing so in place is much the easiest strategy.
+*	When images need to be altered, doing so in place is much the easiest strategy.
 
 */
 
