@@ -89,7 +89,8 @@ private:
 	std::map<int, std::unique_ptr<SegmentCoordinates>> segment_coords_;
 
 	std::vector <std::map<std::string, pair_k>> calculate_face_corners(std::vector<cv::Rect>&);
-	std::set<int> find_matching_segments(std::map<std::string, pair_k>&, std::map<int, std::unique_ptr<SegmentCoordinates>>&); 
+	std::set<int> find_matching_segments(std::map<std::string, pair_k>&, 
+										 std::map<int, std::unique_ptr<SegmentCoordinates>>&); 
 	void check_borders(std::vector <std::map<std::string, pair_k>>&  face_coords, int width, int height);
 };
 
@@ -338,9 +339,13 @@ void AdaptiveFaceDetectCvStage::drawFeatures(Mat &img)
 		Rect r = faces_[i];
 		Point center;
 		Scalar color = colors[i % 8];
-		int radius;
-		double aspect_ratio = (double)r.width / r.height;
+		//int radius;
+		//double aspect_ratio = (double)r.width / r.height;
 
+		rectangle(img, Point(cvRound(r.x), cvRound(r.y)),
+				Point(cvRound(r.x + r.width - 1), cvRound(r.y + r.height - 1)), color, 3, 8, 0);
+
+		/*
 		if (0.75 < aspect_ratio && aspect_ratio < 1.3)
 		{
 			center.x = cvRound(r.x + r.width * 0.5);
@@ -351,6 +356,7 @@ void AdaptiveFaceDetectCvStage::drawFeatures(Mat &img)
 		else
 			rectangle(img, Point(cvRound(r.x), cvRound(r.y)),
 					  Point(cvRound(r.x + r.width - 1), cvRound(r.y + r.height - 1)), color, 3, 8, 0);
+		*/
 	}
 }
 
