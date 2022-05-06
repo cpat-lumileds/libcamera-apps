@@ -2,8 +2,36 @@
 /*
  * Copyright (C) 2021, Raspberry Pi (Trading) Limited
  *
- * face_detect_cv_stage.cpp - Face Detector implementation, using OpenCV
+ * adaptive_face_detect_cv_stage.cpp - Adaptive Face Detector implementation, using OpenCV
+ * 
+ * Based on face_detect_cv_stage.cpp
  */
+
+/* 
+Some helpful hints on writing your own stages:
+
+*	Generally, the Process method should not take too long as it will block the imaging pipeline 
+	and may cause stuttering.
+	When time-consuming algorithms need to be run, it may be helpful to delegate them to 
+	another asynchronous thread.
+
+*	When delegating work to another thread, the way image buffers are handled currently 
+	means that they will need to be copied.
+	For some applications, such as image analysis, 
+	it may be viable to use the "low resolution" image stream rather than full resolution images.
+
+*	The post-processing framework adds multi-threading parallelism on a per-frame basis. 
+	This is helpful in improving throughput if you want to run on every single frame. 
+	Some functions may supply parallelism within each frame (such as OpenCV and TFLite). 
+	In these cases it would probably be better to serialise the calls so as to suppress 
+	the per-frame parallelism.
+
+*	Most streams, and in particular the low resolution stream, have YUV420 format. 
+	These formats are sometimes not ideal for OpenCV or TFLite so there may sometimes 
+	need to be a conversion step.
+
+*	When images need to be altered, doing so in place is much the easiest strategy.
+*/
 
 #include <algorithm>
 #include <chrono>
@@ -62,6 +90,12 @@ private:
 	void detectFeatures(cv::CascadeClassifier &cascade);
 	void drawFeatures(cv::Mat &img);
 
+	void drawLines(cv::Mat &img);
+	std::vector <std::map<std::string, pair_k>> calculate_face_corners(std::vector<cv::Rect>&);
+	std::set<int> find_matching_segments(std::map<std::string, pair_k>&, 
+										 std::map<int, std::unique_ptr<SegmentCoordinates>>&); 
+	void check_borders(std::vector <std::map<std::string, pair_k>>&  face_coords, int width, int height);
+
 	Stream *stream_;
 	StreamInfo low_res_info_;
 	Stream *full_stream_;
@@ -80,17 +114,13 @@ private:
 	int refresh_rate_;
 	int draw_features_;
 
-	void drawLines(cv::Mat &img);
 	bool adaptive_;
 	std::mutex adaptive_mutex_;
 	int seg_x_;
 	int seg_y_;
 	bool draw_lines_;
+	//TODO: pointer to coords really necessary ?
 	std::map<int, std::unique_ptr<SegmentCoordinates>> segment_coords_;
-	std::vector <std::map<std::string, pair_k>> calculate_face_corners(std::vector<cv::Rect>&);
-	std::set<int> find_matching_segments(std::map<std::string, pair_k>&, 
-										 std::map<int, std::unique_ptr<SegmentCoordinates>>&); 
-	void check_borders(std::vector <std::map<std::string, pair_k>>&  face_coords, int width, int height);
 
 	std::string text_;
 	int fg_;
@@ -100,18 +130,23 @@ private:
 	double alpha_;
 	double adjusted_scale_;
 	int adjusted_thickness_;
-
 };
-
 
 
 #define NAME "adaptive_face_detect_cv"
 
+/*
+Return the name of the stage. This is used to match against stages listed in the 
+JSON post-processing configuration file.
+*/
 char const *AdaptiveFaceDetectCvStage::Name() const
 {
 	return NAME;
 }
 
+/*
+This method will read any of the stage’s configuration parameters from the JSON file.
+*/
 void AdaptiveFaceDetectCvStage::Read(boost::property_tree::ptree const &params)
 {
 	cascadeName_ =
@@ -138,6 +173,11 @@ void AdaptiveFaceDetectCvStage::Read(boost::property_tree::ptree const &params)
 	alpha_ = params.get<double>("alpha", 0.5);
 }
 
+/*
+This is called just after the camera has been configured. 
+It is a good moment to check that the stage has access to the streams it needs, 
+and it can also allocate any resources that it may require.
+*/
 void AdaptiveFaceDetectCvStage::Configure()
 {
 	stream_ = nullptr;
@@ -181,6 +221,13 @@ void AdaptiveFaceDetectCvStage::Configure()
 
 }
 
+/*
+This method presents completed camera requests for post-processing and is where the
+necessary pixel manipulations or image analysis will happen. 
+
+The function returns true if the post-processing framework is not 
+to deliver this request on to the application.
+*/
 bool AdaptiveFaceDetectCvStage::Process(CompletedRequestPtr &completed_request)
 {
 	if (!stream_)
@@ -215,6 +262,18 @@ bool AdaptiveFaceDetectCvStage::Process(CompletedRequestPtr &completed_request)
 		Mat image(full_stream_info_.height, full_stream_info_.width, CV_8U, ptr, full_stream_info_.stride);
 		drawFeatures(image);
 		if (draw_lines_) drawLines(image);
+
+		int font = FONT_HERSHEY_SIMPLEX;
+		int baseline = 0;
+		Size size = getTextSize(text_, font, adjusted_scale_, adjusted_thickness_, &baseline);
+
+		// Can't find a handy "draw rectangle with alpha" function...
+		for (int y = 0; y < size.height + baseline; y++, ptr += full_stream_info_.stride)
+		{
+			for (int x = 0; x < size.width; x++)
+				ptr[x] = bg_ * alpha_ + (1 - alpha_) * ptr[x];
+		}
+		putText(image, text_, Point(0, size.height), font, adjusted_scale_, fg_, adjusted_thickness_, 0);
 	}
 
 
@@ -233,12 +292,12 @@ bool AdaptiveFaceDetectCvStage::Process(CompletedRequestPtr &completed_request)
 		// 	for (auto const& [key, val]: fc)
 		// 		std::cout << key << " " << val.first << " " << val.second << " " << std::endl;
 
+		text_ = "";
 		std::set<int> segments;
 		for (auto& face: face_coords){
 			segments = find_matching_segments(face, segment_coords_);
 			for (auto& s: segments)
-			    std::cout << s << " ";
-			std::cout<<std::endl; 
+				text_ += std::to_string(s) + " "; 
 		}
 	}
 
