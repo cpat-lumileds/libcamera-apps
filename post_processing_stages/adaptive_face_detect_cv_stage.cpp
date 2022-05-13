@@ -52,24 +52,13 @@ Some helpful hints on writing your own stages:
 #include "opencv2/imgproc.hpp"
 #include "opencv2/objdetect.hpp"
 
+#include "lumileds/lumileds_i2c.hpp"
+#include "lumileds/leds.hpp"
+
 using namespace cv;
 
 using Stream = libcamera::Stream;
 
-
-/*
-(x0, y0)--------| 
-|               |
-|               |
-|-------------(x1, y1)
-*/
-class SegmentCoordinates {
-    public:
-        SegmentCoordinates(int x0, int y0, int x1, int y1): x0_(x0), y0_(y0), x1_(x1), y1_(y1) {}
-        int x0_, y0_, x1_, y1_;
-};
-
-typedef std::pair<int, int> pair_k;
 
 class AdaptiveFaceDetectCvStage : public PostProcessingStage
 {
@@ -85,6 +74,8 @@ public:
 	bool Process(CompletedRequestPtr &completed_request) override;
 
 	void Stop() override;
+
+	void Teardown() override;
 
 private:
 	void detectFeatures(cv::CascadeClassifier &cascade);
@@ -130,6 +121,8 @@ private:
 	double alpha_;
 	double adjusted_scale_;
 	int adjusted_thickness_;
+
+	LumiledsI2C i2c_;
 };
 
 
@@ -171,6 +164,7 @@ void AdaptiveFaceDetectCvStage::Read(boost::property_tree::ptree const &params)
 	scale_ = params.get<double>("scale", 1.0);
 	thickness_ = params.get<int>("thickness", 2);
 	alpha_ = params.get<double>("alpha", 0.5);
+
 }
 
 /*
@@ -300,6 +294,8 @@ bool AdaptiveFaceDetectCvStage::Process(CompletedRequestPtr &completed_request)
 				text_ += std::to_string(s) + " "; 
 		}
 	}
+
+	i2c_.makeFlash();
 
 	return false;
 }
@@ -444,10 +440,16 @@ void AdaptiveFaceDetectCvStage::drawFeatures(Mat &img)
 }
 
 void AdaptiveFaceDetectCvStage::Stop()
-{
+{	
 	if (future_ptr_)
 		future_ptr_->wait();
+	
 }
+
+void AdaptiveFaceDetectCvStage::Teardown(){
+	i2c_.clearDacs();
+}
+
 
 static PostProcessingStage *Create(LibcameraApp *app)
 {
